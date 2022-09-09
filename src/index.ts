@@ -106,6 +106,8 @@ function createRoom(socket: any, roomName: string, userName: string) {
         connectedUsers.push(socket.id)
 
         socket.join(roomName);
+        console.log(`User ${userName} joined the room ${roomName}`);
+        
         socket.emit('room-created', {roomName})
     }
 }
@@ -113,11 +115,14 @@ function createRoom(socket: any, roomName: string, userName: string) {
 function joinRoom(socket: any, roomName: string, userName: string) {
 
     let existingRoom: any;
-
+    console.log(roomsList);
     roomsList.forEach(room => {
+        console.log('\n');
+        console.log(room.name, roomName, room.name === roomName);
+        console.log('\n');
         if (room.name === roomName) {
             existingRoom = room;
-
+            console.log(existingRoom, 'selected');
             if (existingRoom.users.length === 2)
                 socket.emit('full-room')
             else {
@@ -125,8 +130,10 @@ function joinRoom(socket: any, roomName: string, userName: string) {
                 connectedUsers.push(socket.id)
 
                 socket.join(roomName);
+                console.log(`User ${userName} joined the room ${roomName}`);
+                
                 socket.emit('room-joined', {roomName, users: room.users});
-                socket.to(roomName).emit('room-joined', roomName, room.users);
+                socket.to(roomName).emit('room-joined', {roomName, users: room.users});
             }
 
         }
@@ -176,12 +183,13 @@ io.on("connection",  (socket) => {
     });
 
     //Create Room
-    socket.on('createRoom',  (roomName, userName) => {
+    socket.on('createRoom', (roomName, userName) => {
         createRoom(socket, roomName, userName);
+        console.log('room created');
     })
 
     //Join Room
-    socket.on('joinRoom',  (roomName, userName) => {
+    socket.on('joinRoom', (roomName, userName) => {
         joinRoom(socket, roomName, userName)
     })
 
