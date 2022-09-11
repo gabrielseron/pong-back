@@ -40,28 +40,31 @@ function game(roomName: string, users: any[]) {
         x: 50,
         y: 50,
         dirX: Math.floor(Math.random())%2 === 0 ? -1 : 1,
-        dirY: Math.floor(Math.random())%2 === 0 ? -1 : 1,
+        dirY: Math.random() * 2 -1,
     }
     const p1Id = users[0].id
     const p1Socket = io.sockets.sockets.get(p1Id)
     let p1Paddle = {
         size: 20,
+        x: 1,
         y: 50
     }
     const p2Id = users[1].id
     const p2Socket = io.sockets.sockets.get(p2Id)
     let p2Paddle = {
         size: 20,
+        x: 99,
         y: 50
     }
+    let pong = 0;
+    let score = {
+        p1: 0,
+        p2: 0
+    }
 
-    console.log(p1Id);
-    console.log(p2Id);
-    console.log(users);
-    console.log(roomName);
-
+    let speed = 2
+    let step = 1
     p1Socket.on('movePaddleUp', () => {
-        console.log('paddle 1 up');
 
         if (p1Paddle.y-- < 0) {
             p1Paddle.y = 0
@@ -71,7 +74,6 @@ function game(roomName: string, users: any[]) {
     })
 
     p2Socket.on('movePaddleUp', () => {
-        console.log('paddle 2 up');
 
         if (p2Paddle.y-- < 0) {
             p2Paddle.y = 0
@@ -81,7 +83,6 @@ function game(roomName: string, users: any[]) {
     })
 
     p1Socket.on('movePaddleDown', () => {
-        console.log('paddle 1 down');
 
         if (p1Paddle.y++ > 100) {
             p1Paddle.y = 100
@@ -91,18 +92,67 @@ function game(roomName: string, users: any[]) {
     })
 
     p2Socket.on('movePaddleDown', () => {
-        console.log('paddle 2 down');
 
         if (p2Paddle.y++ > 100) {
             p2Paddle.y = 100
         } else {
             p2Paddle.y++
         }
-    })
+    });
 
-    var gameInterval = setInterval(() => {
-        io.sockets.in(roomName).emit('game-update', {board, ball, p1Paddle, p2Paddle});
-    }, 1)
+
+    if (users.length === 2) {
+        var gameInterval = setInterval(() => {
+
+            if (ball.x < board.minX) {
+                score.p2++
+                ball.x = 50;
+                ball.y = 50;
+                ball.dirX = ball.dirX >= 0 ? -1 : 1;
+                ball.dirY = Math.random() * 2 -1;
+                speed = 2
+            }
+    
+            if (ball.x > board.maxX) {
+                score.p1++
+                ball.x = 50;
+                ball.y = 50;
+                ball.dirX = ball.dirX >= 0 ? -1 : 1;
+                ball.dirY = Math.random() * 2 -1;
+                pong = 0;
+                speed = 2
+            }
+
+            if (ball.y <= board.minY) {
+                ball.y = board.minY
+                ball.dirY *= -1
+            }
+
+            if (ball.y >= board.maxY ) {
+                ball.y = board.maxY
+                ball.dirY *= -1
+            }
+
+            if ((ball.x <= p1Paddle.x+step && ball.y >= p1Paddle.y-p1Paddle.size/2 && ball.y <= p1Paddle.y+p1Paddle.size/2)) {
+                ball.dirX *= -1
+                ball.dirY *= (-1 + (p1Paddle.y - ball.y)/-5)
+                pong++
+                speed+=0.1
+            }
+
+            if ((ball.x >= p2Paddle.x-step && ball.y >= p2Paddle.y-p2Paddle.size/2 && ball.y <= p2Paddle.y+p2Paddle.size/2)) {
+                ball.dirX *= -1
+                ball.dirY *= (-1 + (p2Paddle.y - ball.y)/-5)
+                console.log((p2Paddle.y - ball.y)/5);
+                pong++
+                speed+=0.1
+            }
+
+            ball.x = ball.x + ball.dirX * speed
+            ball.y = ball.y + ball.dirY * speed
+            io.sockets.in(roomName).emit('game-update', {ball, p1Paddle, p2Paddle, pong, score});
+        }, 50)
+    }
 
     p1Socket.on('disconnect', () => {
         clearInterval(gameInterval)
@@ -113,54 +163,6 @@ function game(roomName: string, users: any[]) {
     })
 
 }
-
-
-// let nbOfConnexions = 0,
-//     posXMax = 800,
-//     posYMax = 600,
-//     posX = posXMax/2,
-//     posY = posYMax/2,
-//     dirX = Math.floor(Math.random())%2 === 0 ? -1 : 1,
-//     dirY = Math.floor(Math.random())%2 === 0 ? -1 : 1,
-//     time = 15,
-//     step = 5
-
-// function pong() {
-//     if (nbOfConnexions) {
-//         let pong = false;
-//         let corner = false;
-//         posX = posX + dirX * step
-//         posY = posY + dirY * step
-//         if (
-//             posX >= 0 && posX <= 25 && posY >= 0 && posY <= 25 ||
-//             posX <= posXMax && posX >= posXMax-25 && posY >= 0 && posY <= 25 ||
-//             posY <= posYMax && posY >= posYMax-25 && posX >= 0 && posX <= 25 ||
-//             posY <= posYMax && posY >= posYMax-25 && posX <= posXMax && posX >= posXMax-10
-//         ) {
-//             corner = true
-//         }
-
-//         if (posX >= posXMax - 20 || posX <= 0) {
-//             dirX = -dirX
-//             pong = true;
-//         }
-//         if (posY >= posYMax - 20 || posY <= 0) {
-//             dirY = -dirY
-//         }
-//         io.emit('move', {posX, posY, pong, corner})
-//     }
-// }
-
-// function resetStats() {
-//     posXMax = 800,
-//     posYMax = 600,
-//     posX = posXMax/2,
-//     posY = posYMax/2,
-//     dirX = Math.floor(Math.random())%2 === 0 ? -1 : 1,
-//     dirY = Math.floor(Math.random())%2 === 0 ? -1 : 1,
-//     time = 15,
-//     step = 5
-// }
 
 function getActiveRooms(io: any) {
     const arr = Array.from(io.sockets.adapter.rooms);
@@ -192,7 +194,6 @@ function createRoom(socket: any, roomName: string, userName: string) {
         connectedUsers.push(socket.id)
 
         socket.join(roomName);
-        console.log(`User ${userName} joined the room ${roomName}`);
 
         socket.emit('room-created', {roomName})
     }
@@ -204,7 +205,6 @@ function joinRoom(socket: any, roomName: string, userName: string) {
     roomsList.forEach(async (room) => {
         if (room.name === roomName) {
             existingRoom = room;
-            console.log(existingRoom, 'selected');
             if (existingRoom.users.length === 2)
                 socket.emit('full-room')
             else {
@@ -212,7 +212,6 @@ function joinRoom(socket: any, roomName: string, userName: string) {
                 connectedUsers.push(socket.id)
 
                 socket.join(roomName);
-                console.log(`User ${userName} joined the room ${roomName}`);
 
                 socket.emit('room-joined', {roomName, users: room.users});
                 socket.to(roomName).emit('room-joined', {roomName, users: room.users});
@@ -237,9 +236,6 @@ function joinRoom(socket: any, roomName: string, userName: string) {
                     }
                 });
             }
-            console.log('room: ', room,);
-            console.log('roomsList: ', roomsList);
-            console.log('index: ', index);
             if (room.users.length === 0) {
                 roomsList.splice(index, 1);
             }
@@ -255,12 +251,6 @@ function joinRoom(socket: any, roomName: string, userName: string) {
 
 
 io.on("connection",  (socket) => {
-    // console.log('hello ' + socket.id);
-    // if (nbOfConnexions = 1) {
-    //     resetStats()
-    // }
-    // io.emit('move', {posX, posY})
-    // let ballMovement = setInterval(pong, time)
 
     // Get Rooms
     socket.on('getRooms', () => {
@@ -270,7 +260,6 @@ io.on("connection",  (socket) => {
     //Create Room
     socket.on('createRoom', (roomName, userName) => {
         createRoom(socket, roomName, userName);
-        console.log('room created');
     })
 
     //Join Room
@@ -285,8 +274,5 @@ io.on("connection",  (socket) => {
             disconnectFromRoom(socket);
         }
 
-        console.log(roomsList);
-
-        // nbOfConnexions--
     });
 });
